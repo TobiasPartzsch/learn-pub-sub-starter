@@ -3,9 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
@@ -20,6 +17,7 @@ func main() {
 		log.Fatalf("could not connect to RabbitMQ: %v", err)
 	}
 	defer conn.Close()
+	fmt.Println("Peril game server connected to RabbitMQ!")
 
 	ch, err := conn.Channel()
 	if err != nil {
@@ -37,12 +35,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not publish: %v", err)
 	}
+	fmt.Println("Pause message sent!")
 
-	fmt.Println("Peril game server connected to RabbitMQ!")
+	// // wait for ctrl+c
+	// sigChan := make(chan os.Signal, 1)
+	// signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	// <-sigChan
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
-
-	fmt.Println("RabbitMQ connection closed.")
 }
