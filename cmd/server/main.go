@@ -1,11 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
-	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
-	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -23,23 +23,27 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not open new channel: %v", err)
 	}
+	defer ch.Close()
 
-	err = pubsub.PublishJSON(
-		ch,
-		routing.ExchangePerilDirect,
-		routing.PauseKey,
-		routing.PlayingState{
-			IsPaused: true,
-		},
-	)
-	if err != nil {
-		log.Fatalf("could not publish: %v", err)
+	PrintServerHelp()
+
+	for {
+		input := gamelogic.GetInput()
+		if len(input) == 0 {
+			continue
+		}
+		name, args := input[0], input[1:]
+		cmd, ok := ServerCommands[name]
+		if !ok {
+			fmt.Printf("unknown command: %s\n", name)
+			continue
+		}
+		if err := cmd.Handler(ch, args); err != nil {
+			if errors.Is(err, ErrQuit) {
+				fmt.Println("Shutting down server...")
+				break
+			}
+			fmt.Printf("error: %v\n", err)
+		}
 	}
-	fmt.Println("Pause message sent!")
-
-	// // wait for ctrl+c
-	// sigChan := make(chan os.Signal, 1)
-	// signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	// <-sigChan
-
 }

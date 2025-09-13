@@ -38,14 +38,6 @@ func ClientWelcome() (string, error) {
 	return username, nil
 }
 
-func PrintServerHelp() {
-	fmt.Println("Possible commands:")
-	fmt.Println("* pause")
-	fmt.Println("* resume")
-	fmt.Println("* quit")
-	fmt.Println("* help")
-}
-
 func GetInput() []string {
 	fmt.Print("> ")
 	scanner := bufio.NewScanner(os.Stdin)
