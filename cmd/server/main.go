@@ -6,6 +6,8 @@ import (
 	"log"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -19,11 +21,24 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Peril game server connected to RabbitMQ!")
 
-	ch, err := conn.Channel()
+	publishCh, err := conn.Channel()
 	if err != nil {
 		log.Fatalf("could not open new channel: %v", err)
 	}
-	defer ch.Close()
+	defer publishCh.Close()
+
+	topicCh, queue, err := pubsub.DeclareAndBind(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routing.GameLogSlug+".*",
+		pubsub.Durable,
+	)
+	if err != nil {
+		log.Fatalf("could not open new topic channel: %v", err)
+	}
+	defer topicCh.Close()
+	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
 	PrintServerHelp()
 
@@ -38,7 +53,7 @@ func main() {
 			fmt.Printf("unknown command: %s\n", name)
 			continue
 		}
-		if err := cmd.Handler(ch, args); err != nil {
+		if err := cmd.Handler(publishCh, args); err != nil {
 			if errors.Is(err, ErrQuit) {
 				fmt.Println("Shutting down server...")
 				break
