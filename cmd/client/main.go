@@ -21,31 +21,23 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Peril game client connected to RabbitMQ!")
 
+	pubCh, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("could not open publish channel: %v", err)
+	}
+	defer pubCh.Close()
+
 	username, err := gamelogic.ClientWelcome()
 	if err != nil {
 		log.Fatalf("could not welcome the user: %v", err)
 	}
-
-	ch, qu, err := pubsub.DeclareAndBind(
-		conn,
-		routing.ExchangePerilDirect,
-		fmt.Sprintf("%s.%s", routing.PauseKey, username),
-		routing.PauseKey,
-		pubsub.Transient,
-	)
-	if err != nil {
-		log.Fatalf("could not subscribe to pause: %v", err)
-	}
-	defer ch.Close()
-
-	fmt.Printf("Queue %v declared and bound!\n", qu.Name)
 
 	gs := gamelogic.NewGameState(username)
 
 	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilDirect,
-		fmt.Sprintf("%s.%s", routing.PauseKey, gs.Player.Username),
+		queuePauseName(username),
 		routing.PauseKey,
 		pubsub.Transient,
 		handlerPause(gs),
@@ -57,8 +49,8 @@ func main() {
 	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilTopic,
-		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, gs.Player.Username),
-		routing.ArmyMovesPrefix+".*",
+		queueArmyMoveName(username),
+		bindArmyMovesPattern(),
 		pubsub.Transient,
 		handlerMove(gs),
 	)
@@ -78,13 +70,20 @@ func main() {
 				fmt.Println(err)
 				continue
 			}
-			pubsub.PublishJSON(
-				ch,
+			if err := pubsub.PublishJSON(
+				pubCh,
 				routing.ExchangePerilTopic,
-				fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, gs.Player.Username),
+				queueArmyMoveName(gs.Player.Username), // army_moves.username
 				mv,
-			)
-			fmt.Printf("Units %v moved to %s\n", mv.Units, mv.ToLocation)
+			); err != nil {
+				log.Printf("failed to publish move: %v", err)
+			} else {
+				log.Printf(
+					"published move to %q: units=%v -> %s",
+					queueArmyMoveName(gs.Player.Username),
+					mv.Units,
+					mv.ToLocation)
+			}
 		case "spawn":
 			err = gs.CommandSpawn(words)
 			if err != nil {
@@ -120,3 +119,7 @@ func handlerMove(gs *gamelogic.GameState) func(gamelogic.ArmyMove) {
 		gs.HandleMove(mv)
 	}
 }
+
+func queuePauseName(u string) string    { return routing.PauseKey + "." + u }
+func queueArmyMoveName(u string) string { return routing.ArmyMovesPrefix + "." + u }
+func bindArmyMovesPattern() string      { return routing.ArmyMovesPrefix + ".*" }
