@@ -52,10 +52,22 @@ func main() {
 		queueArmyMoveName(username),
 		bindArmyMovesPattern(),
 		pubsub.Transient,
-		handlerMove(gs),
+		handlerMove(gs, pubCh),
 	)
 	if err != nil {
 		log.Fatalf("could not subscribe to movements: %v", err)
+	}
+
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.WarRecognitionsPrefix,
+		routing.WarRecognitionsPrefix+".*",
+		pubsub.Durable,
+		handlerWar(gs),
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to war declarations: %v", err)
 	}
 
 	for {
