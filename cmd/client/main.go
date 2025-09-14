@@ -54,6 +54,18 @@ func main() {
 		log.Fatalf("could not subscribe pause handler: %v", err)
 	}
 
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, gs.Player.Username),
+		routing.ArmyMovesPrefix+".*",
+		pubsub.Transient,
+		handlerMove(gs),
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to movements: %v", err)
+	}
+
 	for {
 		words := gamelogic.GetInput()
 		if len(words) == 0 {
@@ -61,13 +73,18 @@ func main() {
 		}
 		switch words[0] {
 		case "move":
-			_, err := gs.CommandMove(words)
+			mv, err := gs.CommandMove(words)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
-
-			// TODO: publish the move
+			pubsub.PublishJSON(
+				ch,
+				routing.ExchangePerilTopic,
+				fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, gs.Player.Username),
+				mv,
+			)
+			fmt.Printf("Units %v moved to %s\n", mv.Units, mv.ToLocation)
 		case "spawn":
 			err = gs.CommandSpawn(words)
 			if err != nil {
@@ -94,5 +111,12 @@ func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) {
 	return func(ps routing.PlayingState) {
 		defer fmt.Print("> ")
 		gs.HandlePause(ps)
+	}
+}
+
+func handlerMove(gs *gamelogic.GameState) func(gamelogic.ArmyMove) {
+	return func(mv gamelogic.ArmyMove) {
+		defer fmt.Print("> ")
+		gs.HandleMove(mv)
 	}
 }
