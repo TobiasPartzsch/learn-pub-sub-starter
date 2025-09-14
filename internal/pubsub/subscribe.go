@@ -13,23 +13,51 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	queueType SimpleQueueType,
-	handler func(T),
+	handler func(T) Acktype,
 ) error {
-	ch, qu, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
+	ch, queue, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
 	if err != nil {
-		return fmt.Errorf("could not declare and bind new channel: %w", err)
+		return fmt.Errorf("could not declare and bind queue: %v", err)
 	}
-	deliveryCh, err := ch.Consume(qu.Name, "", false, false, false, false, nil)
+
+	msgs, err := ch.Consume(
+		queue.Name, // queue
+		"",         // consumer
+		false,      // auto-ack
+		false,      // exclusive
+		false,      // no-local
+		false,      // no-wait
+		nil,        // args
+	)
 	if err != nil {
-		return fmt.Errorf("could not create new channel for delivery: %w", err)
+		return fmt.Errorf("could not consume messages: %v", err)
 	}
-	// Start a goroutine that ranges over the channel of deliveries, and for each message:
+
+	unmarshaller := func(data []byte) (T, error) {
+		var target T
+		err := json.Unmarshal(data, &target)
+		return target, err
+	}
+
 	go func() {
-		for d := range deliveryCh {
-			var msg T
-			json.Unmarshal(d.Body, &msg)
-			handler(msg)
-			d.Ack(false)
+		defer ch.Close()
+		for msg := range msgs {
+			target, err := unmarshaller(msg.Body)
+			if err != nil {
+				fmt.Printf("could not unmarshal message: %v\n", err)
+				continue
+			}
+			switch handler(target) {
+			case Ack:
+				msg.Ack(false)
+				fmt.Println("Ack")
+			case NackDiscard:
+				msg.Nack(false, false)
+				fmt.Println("NackDiscard")
+			case NackRequeue:
+				msg.Nack(false, true)
+				fmt.Println("NackRequeue")
+			}
 		}
 	}()
 	return nil
