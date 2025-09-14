@@ -21,7 +21,9 @@ func DeclareAndBind(
 	isAutoDelete := false
 	isExclusive := false
 	isNoWait := false
-	var args amqp.Table = nil
+	args := amqp.Table{
+		"x-dead-letter-exchange": "peril_dlx",
+	}
 	switch queueType {
 	case Durable:
 		isDurable = true
