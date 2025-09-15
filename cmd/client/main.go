@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -115,8 +117,30 @@ func main() {
 		case "help":
 			gamelogic.PrintClientHelp()
 		case "spam":
-			// TODO: publish n malicious logs
-			fmt.Println("Spamming not allowed yet!")
+			if len(words) != 2 {
+				fmt.Println("spam command needs a single integer parameter")
+				continue
+			}
+			count, err := strconv.Atoi(words[1])
+			if err != nil {
+				fmt.Println("spam command needs a single integer parameter")
+				continue
+			}
+			for range count {
+				// 		Use gamelogic.GetMaliciousLog to get a malicious log message.
+				msg := gamelogic.GetMaliciousLog()
+				// 		Publish the log message (a struct) to Rabbit. Use the following parameters:
+				pubsub.PublishGob(
+					pubCh,
+					routing.ExchangePerilTopic,
+					keyGameLogs(gs.Player.Username),
+					routing.GameLog{
+						CurrentTime: time.Now(),
+						Message:     msg,
+						Username:    gs.Player.Username,
+					},
+				)
+			}
 		case "quit":
 			gamelogic.PrintQuit()
 			return
