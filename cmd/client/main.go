@@ -64,7 +64,7 @@ func main() {
 		routing.WarRecognitionsPrefix,
 		routing.WarRecognitionsPrefix+".*",
 		pubsub.Durable,
-		handlerWar(gs),
+		handlerWar(pubCh, gs),
 	)
 	if err != nil {
 		log.Fatalf("could not subscribe to war declarations: %v", err)
@@ -121,3 +121,4 @@ func main() {
 func queuePauseName(u string) string    { return routing.PauseKey + "." + u }
 func queueArmyMoveName(u string) string { return routing.ArmyMovesPrefix + "." + u }
 func bindArmyMovesPattern() string      { return routing.ArmyMovesPrefix + ".*" }
+func queueGameLogKey(u string) string   { return routing.GameLogSlug + "." + u }

@@ -10,6 +10,10 @@ import (
 )
 
 const logsFile = "game.log"
+const (
+	WarWinFormat  = "%s won a war against %s"
+	WarDrawFormat = "A war between %s and %s resulted in a draw"
+)
 
 const writeToDiskSleep = 1 * time.Second
 
