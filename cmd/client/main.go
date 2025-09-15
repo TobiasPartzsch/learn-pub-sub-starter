@@ -40,7 +40,9 @@ func main() {
 		queuePauseName(username),
 		routing.PauseKey,
 		pubsub.Transient,
-		handlerPause(gs),
+		handlerPause(HandlerDeps{
+			GS: gs,
+		}),
 	)
 	if err != nil {
 		log.Fatalf("could not subscribe pause handler: %v", err)
@@ -52,7 +54,10 @@ func main() {
 		queueArmyMoveName(username),
 		bindArmyMovesPattern(),
 		pubsub.Transient,
-		handlerMove(gs, pubCh),
+		handlerMove(HandlerDepsWithChannel{
+			Ch: pubCh,
+			GS: gs,
+		}),
 	)
 	if err != nil {
 		log.Fatalf("could not subscribe to movements: %v", err)
@@ -64,7 +69,10 @@ func main() {
 		routing.WarRecognitionsPrefix,
 		routing.WarRecognitionsPrefix+".*",
 		pubsub.Durable,
-		handlerWar(pubCh, gs),
+		handlerWar(HandlerDepsWithChannel{
+			Ch: pubCh,
+			GS: gs,
+		}),
 	)
 	if err != nil {
 		log.Fatalf("could not subscribe to war declarations: %v", err)
