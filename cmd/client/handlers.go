@@ -35,9 +35,7 @@ func handlerMove(d HandlerDepsWithChannel) func(gamelogic.ArmyMove) pubsub.Ackty
 
 		moveOutcome := gs.HandleMove(move)
 		switch moveOutcome {
-		case gamelogic.MoveOutcomeSamePlayer:
-			return pubsub.Ack
-		case gamelogic.MoveOutComeSafe:
+		case gamelogic.MoveOutcomeSamePlayer, gamelogic.MoveOutComeSafe:
 			return pubsub.Ack
 		case gamelogic.MoveOutcomeMakeWar:
 			err := pubsub.PublishJSON(
@@ -69,9 +67,7 @@ func handlerWar(d HandlerDepsWithChannel) func(dw gamelogic.RecognitionOfWar) pu
 
 		var msg string
 		switch warOutcome {
-		case gamelogic.WarOutcomeYouWon:
-			fallthrough
-		case gamelogic.WarOutcomeOpponentWon:
+		case gamelogic.WarOutcomeYouWon, gamelogic.WarOutcomeOpponentWon:
 			msg = fmt.Sprintf(gamelogic.WarWinFormat, winner, loser)
 		case gamelogic.WarOutcomeDraw:
 			msg = fmt.Sprintf(gamelogic.WarDrawFormat, winner, loser)
