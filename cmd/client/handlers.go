@@ -41,14 +41,21 @@ func handlerMove(d HandlerDepsWithChannel) func(gamelogic.ArmyMove) pubsub.Ackty
 			err := pubsub.PublishJSON(
 				pubCh,
 				routing.ExchangePerilTopic,
-				routing.WarRecognitionsPrefix+"."+gs.GetUsername(),
+				keyWarRecognitions(move.Player.Username),
 				gamelogic.RecognitionOfWar{
 					Attacker: move.Player,
 					Defender: gs.GetPlayerSnap(),
 				},
 			)
 			if err != nil {
-				fmt.Printf("error: %s\n", err)
+				fmt.Printf(
+					"publish war recognition failed: exchange=%q key=%q attacker=%q defender=%q err=%v\n",
+					routing.ExchangePerilTopic,
+					keyWarRecognitions(move.Player.Username),
+					move.Player.Username,
+					gs.GetUsername(),
+					err,
+				)
 				return pubsub.NackRequeue
 			}
 			return pubsub.Ack
@@ -84,9 +91,17 @@ func handlerWar(d HandlerDepsWithChannel) func(dw gamelogic.RecognitionOfWar) pu
 		if err := pubsub.PublishGob(
 			pubCh,
 			routing.ExchangePerilTopic,
-			queueGameLogKey(gs.Player.Username),
+			keyGameLogs(gs.Player.Username),
 			log,
 		); err != nil {
+			fmt.Printf(
+				"publish game log failed: exchange=%q key=%q user=%q outcome=%v err=%v\n",
+				routing.ExchangePerilTopic,
+				keyGameLogs(gs.Player.Username),
+				gs.Player.Username,
+				warOutcome,
+				err,
+			)
 			return pubsub.NackRequeue
 		}
 		return pubsub.Ack

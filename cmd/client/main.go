@@ -37,7 +37,7 @@ func main() {
 	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilDirect,
-		queuePauseName(username),
+		keyPause(username),
 		routing.PauseKey,
 		pubsub.Transient,
 		handlerPause(HandlerDeps{
@@ -51,7 +51,7 @@ func main() {
 	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilTopic,
-		queueArmyMoveName(username),
+		keyArmyMoves(username),
 		bindArmyMovesPattern(),
 		pubsub.Transient,
 		handlerMove(HandlerDepsWithChannel{
@@ -93,14 +93,14 @@ func main() {
 			if err := pubsub.PublishJSON(
 				pubCh,
 				routing.ExchangePerilTopic,
-				queueArmyMoveName(gs.Player.Username), // army_moves.username
+				keyArmyMoves(gs.Player.Username), // army_moves.username
 				mv,
 			); err != nil {
 				log.Printf("failed to publish move: %v", err)
 			} else {
 				log.Printf(
 					"published move to %q: units=%v -> %s",
-					queueArmyMoveName(gs.Player.Username),
+					keyArmyMoves(gs.Player.Username),
 					mv.Units,
 					mv.ToLocation)
 			}
@@ -126,7 +126,14 @@ func main() {
 	}
 }
 
-func queuePauseName(u string) string    { return routing.PauseKey + "." + u }
-func queueArmyMoveName(u string) string { return routing.ArmyMovesPrefix + "." + u }
-func bindArmyMovesPattern() string      { return routing.ArmyMovesPrefix + ".*" }
-func queueGameLogKey(u string) string   { return routing.GameLogSlug + "." + u }
+func key(prefix, user string) string { return prefix + "." + user }
+func bindAll(prefix string) string   { return prefix + ".*" }
+
+// Concrete helpers (optional thin wrappers)
+func keyPause(user string) string           { return key(routing.PauseKey, user) }
+func keyArmyMoves(user string) string       { return key(routing.ArmyMovesPrefix, user) }
+func keyWarRecognitions(user string) string { return key(routing.WarRecognitionsPrefix, user) }
+func keyGameLogs(user string) string        { return key(routing.GameLogSlug, user) }
+
+func bindArmyMovesPattern() string { return bindAll(routing.ArmyMovesPrefix) }
+func bindGameLogsPattern() string  { return bindAll(routing.GameLogSlug) }
