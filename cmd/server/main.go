@@ -27,18 +27,17 @@ func main() {
 	}
 	defer publishCh.Close()
 
-	topicCh, queue, err := pubsub.DeclareAndBind(
+	err = pubsub.SubscribeGob(
 		conn,
 		routing.ExchangePerilTopic,
 		routing.GameLogSlug,
 		routing.GameLogSlug+".*",
 		pubsub.Durable,
+		handlerLogs(),
 	)
 	if err != nil {
-		log.Fatalf("could not open new topic channel: %v", err)
+		log.Fatalf("could not starting consuming logs: %v", err)
 	}
-	defer topicCh.Close()
-	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
 	PrintServerHelp()
 
