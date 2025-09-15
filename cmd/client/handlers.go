@@ -53,7 +53,7 @@ func handlerMove(d HandlerDepsWithChannel) func(gamelogic.ArmyMove) pubsub.Ackty
 					routing.ExchangePerilTopic,
 					keyWarRecognitions(move.Player.Username),
 					move.Player.Username,
-					gs.GetUsername(),
+					gs.Player.Username,
 					err,
 				)
 				return pubsub.NackRequeue
